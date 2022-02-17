@@ -10,6 +10,7 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "Engine/Engine.h"
+#include "Actor/exxPersonProjectileBase.h"
 
 //////////////////////////////////////////////////////////////////////////
 // AexxCharacter
@@ -53,6 +54,11 @@ AexxCharacter::AexxCharacter()
 	MaxHealth = 100.0f;
 	CurrentHealth = MaxHealth;
 
+	//初始化投射物类
+	ProjectileClass = AexxPersonProjectileBase::StaticClass();
+	//初始化射速
+	FireRate = 0.25f;
+	bIsFiringWeapon = false;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -82,6 +88,9 @@ void AexxCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerInput
 
 	// VR headset functionality
 	PlayerInputComponent->BindAction("ResetVR", IE_Pressed, this, &AexxCharacter::OnResetVR);
+
+	// 处理发射投射物
+	PlayerInputComponent->BindAction("Fire", IE_Pressed, this, &AexxCharacter::StartFire);
 }
 
 
@@ -135,6 +144,35 @@ float AexxCharacter::TakeDamage(float Damage, struct FDamageEvent const& DamageE
 	float damaeApplied = CurrentHealth - Damage;
 	SetCurrentHealth(damaeApplied);
 	return damaeApplied;
+}
+
+void AexxCharacter::StartFire()
+{
+	if (!bIsFiringWeapon)
+	{
+		bIsFiringWeapon = true;
+		UWorld* World = GetWorld();
+		World->GetTimerManager().SetTimer(FiringTimer, this, &AexxCharacter::StopFire, FireRate, false);
+		HandleFire();
+	}
+}
+
+void AexxCharacter::StopFire()
+{
+	bIsFiringWeapon = false;
+}
+
+void AexxCharacter::HandleFire_Implementation()
+{
+	FVector spawnLocation = GetActorLocation() + (GetControlRotation().Vector() * 100.0f) + (GetActorUpVector() * 50.0f);
+	FRotator spawnRotation = GetControlRotation();
+
+	FActorSpawnParameters spawnParameters;
+	spawnParameters.Instigator = GetInstigator();
+	spawnParameters.Owner = this;
+
+	AexxPersonProjectileBase* spawnedProjectile = GetWorld()->SpawnActor<AexxPersonProjectileBase>(spawnLocation, spawnRotation, spawnParameters);
+
 }
 
 void AexxCharacter::OnResetVR()
