@@ -8,6 +8,8 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/Controller.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "Net/UnrealNetwork.h"
+#include "Engine/Engine.h"
 
 //////////////////////////////////////////////////////////////////////////
 // AexxCharacter
@@ -45,6 +47,12 @@ AexxCharacter::AexxCharacter()
 
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
 	// are set in the derived blueprint asset named MyCharacter (to avoid direct content references in C++)
+
+
+	//初始化玩家生命值
+	MaxHealth = 100.0f;
+	CurrentHealth = MaxHealth;
+
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -76,6 +84,58 @@ void AexxCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerInput
 	PlayerInputComponent->BindAction("ResetVR", IE_Pressed, this, &AexxCharacter::OnResetVR);
 }
 
+
+void AexxCharacter::OnRep_CurrentHealth()
+{
+	OnHealthUpdate();
+}
+
+void AexxCharacter::OnHealthUpdate()
+{
+	//客户端特定的功能
+	if (IsLocallyControlled())
+	{
+		FString healthMessage = FString::Printf(TEXT("You now have %f health remaining."), CurrentHealth);
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Blue, healthMessage);
+
+		if (CurrentHealth <= 0)
+		{
+			FString deathMessage = FString::Printf(TEXT("You have been killed."));
+			GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, deathMessage);
+		}
+	}
+
+	//服务器特定的功能
+	if (GetLocalRole() == ROLE_Authority)
+	{
+		FString healthMessage = FString::Printf(TEXT("%s now has %f health remaining."), *GetFName().ToString(), CurrentHealth);
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Blue, healthMessage);
+	}
+}
+
+void AexxCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	//复制当前生命值
+	DOREPLIFETIME(AexxCharacter, CurrentHealth);
+}
+
+void AexxCharacter::SetCurrentHealth(float healthValue)
+{
+	if (GetLocalRole() == ROLE_Authority)
+	{
+		CurrentHealth = FMath::Clamp(healthValue, 0.f, MaxHealth);
+		OnHealthUpdate();
+	}
+}
+
+float AexxCharacter::TakeDamage(float Damage, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
+{
+	float damaeApplied = CurrentHealth - Damage;
+	SetCurrentHealth(damaeApplied);
+	return damaeApplied;
+}
 
 void AexxCharacter::OnResetVR()
 {

@@ -68,5 +68,52 @@ public:
 	FORCEINLINE class USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
 	/** Returns FollowCamera subobject **/
 	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
+
+protected:
+	/*
+		玩家的最大生命值
+	*/
+	UPROPERTY(EditDefaultsOnly, Category = "Health")
+		float MaxHealth;
+	/*
+		玩家的当前生命值，降到0死亡
+	*/
+	UPROPERTY(ReplicatedUsing = OnRep_CurrentHealth)
+		float CurrentHealth;
+
+	/**
+	 * RepNotify, 用于同步对当前生命值所做的更改。
+	 */
+	UFUNCTION()
+		void OnRep_CurrentHealth();
+
+	/** 相应要更新的生命值。修改够，立即在服务器上调用，并在客户端上调用以响应RepNotify */
+	void OnHealthUpdate();
+
+public:
+	/**
+	 * 属性复制
+	 */
+	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+
+public:
+	/** 最大生命值的取值函数 */
+	UFUNCTION(BlueprintPure, Category = "Health")
+		FORCEINLINE float GetMaxHealth() const { return MaxHealth; }
+
+	/** 当前生命值的取值函数 */
+	UFUNCTION(BlueprintPure, Category = "Health")
+		FORCEINLINE float GetCurrentHealth() const { return CurrentHealth; }
+
+	/** 设置当前生命值函数。将此值的范围限定在0到MaxHealth之间，并调用OnHealthUpdate.仅在服务器上调用 */
+	UFUNCTION(BlueprintCallable, Category = "Health")
+		void SetCurrentHealth(float healthValue);
+
+	/** 承受伤害的时间。从APawn覆盖 */
+	UFUNCTION(BlueprintCallable, Category = "Health")
+		float TakeDamage(float Damage, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
+
+
 };
 
