@@ -25,7 +25,7 @@ AexxPersonProjectileBase::AexxPersonProjectileBase()
 	RootComponent = SphereComponent;
 
 	//定义将作为视觉呈现的网格体。
-	static ConstructorHelpers::FObjectFinder<UStaticMesh> DefaultMesh(TEXT("/Game/StarterContent/Shapes/Shape_Sphere.uasset"));
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> DefaultMesh(TEXT("/Game/StarterContent/Shapes/Shape_Sphere.Shape_Sphere"));
 	StaticMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Mesh"));
 	StaticMesh->SetupAttachment(RootComponent);
 
@@ -77,6 +77,8 @@ void AexxPersonProjectileBase::Tick(float DeltaTime)
 
 void AexxPersonProjectileBase::Destroyed()
 {
+	Super::Destroy();
+
 	FVector apawnLocation = GetActorLocation();
 	UGameplayStatics::SpawnEmitterAtLocation(this, ExplosionEffect, apawnLocation,FRotator::ZeroRotator, true, EPSCPoolMethod::AutoRelease);
 }
